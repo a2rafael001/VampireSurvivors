@@ -12,7 +12,9 @@ namespace Vampire
         }
 
         [SerializeField] protected Transform throwableSpawnPosition;
-        protected new ThrowingMonsterBlueprint monsterBlueprint;
+        
+        protected ThrowingMonsterBlueprint ThrowingBlueprint => (ThrowingMonsterBlueprint)monsterBlueprint;
+        
         protected float timeSinceLastAttack;
         protected State state;
         protected float outOfRangeTime;
@@ -21,8 +23,7 @@ namespace Vampire
         public override void Setup(int monsterIndex, Vector2 position, MonsterBlueprint monsterBlueprint, float hpBuff = 0)
         {
             base.Setup(monsterIndex, position, monsterBlueprint, hpBuff);
-            this.monsterBlueprint = (ThrowingMonsterBlueprint) monsterBlueprint;
-            throwableIndex = entityManager.AddPoolForThrowable(this.monsterBlueprint.throwablePrefab);
+            throwableIndex = entityManager.AddPoolForThrowable(ThrowingBlueprint.throwablePrefab);
             outOfRangeTime = 0;
         }
 
@@ -33,49 +34,50 @@ namespace Vampire
             {
                 Vector2 toPlayer = (playerCharacter.transform.position - transform.position);
                 float distance = toPlayer.magnitude;
-                Vector2 dirToPlayer = toPlayer/distance;
+                Vector2 dirToPlayer = toPlayer / distance;
+
                 switch (state)
                 {
                     case State.Walking:
-                        rb.velocity += dirToPlayer * monsterBlueprint.acceleration * Time.fixedDeltaTime;
-                        if (distance <= monsterBlueprint.range)
+                        rb.linearVelocity += dirToPlayer * ThrowingBlueprint.acceleration * Time.fixedDeltaTime;
+                        if (distance <= ThrowingBlueprint.range)
                         {
                             state = State.Shooting;
                             monsterSpriteAnimator.StopAnimating();
-                            //rb.bodyType = RigidbodyType2D.Static;
-                            //rb.mass = 9999;
                         }
                         break;
 
                     case State.Shooting:
                         timeSinceLastAttack += Time.fixedDeltaTime;
-                        // rb.velocity *= 0.95f;
-                        if (timeSinceLastAttack >= 1.0f/monsterBlueprint.atkspeed)
+                        if (timeSinceLastAttack >= 1.0f / ThrowingBlueprint.atkspeed)
                         {
                             LaunchThrowable(playerCharacter.transform.position);
                             timeSinceLastAttack = 0;
                         }
-                        if (distance <= monsterBlueprint.range)
+                        if (distance <= ThrowingBlueprint.range)
                             outOfRangeTime = 0;
                         else
                             outOfRangeTime += Time.deltaTime;
-                        if (outOfRangeTime > monsterBlueprint.timeAllowedOutsideRange)
+                        if (outOfRangeTime > ThrowingBlueprint.timeAllowedOutsideRange)
                         {
                             state = State.Walking;
                             monsterSpriteAnimator.StartAnimating();
-                            //rb.bodyType = RigidbodyType2D.Dynamic;
-                            //rb.mass = 1;
                         }
                         break;
                 }
-                // if (!knockedBack && rb.velocity.magnitude > monsterBlueprint.movespeed)
-                //      rb.velocity = rb.velocity.normalized * monsterBlueprint.movespeed;
             }
         }
 
         protected void LaunchThrowable(Vector2 targetPosition)
         {
-            Throwable throwable = entityManager.SpawnThrowable(throwableIndex, throwableSpawnPosition.position, monsterBlueprint.atk, 0, -909, monsterBlueprint.targetLayer);
+            Throwable throwable = entityManager.SpawnThrowable(
+                throwableIndex, 
+                throwableSpawnPosition.position, 
+                ThrowingBlueprint.atk, 
+                0, 
+                -909, 
+                ThrowingBlueprint.targetLayer
+            );
             targetPosition += playerCharacter.Velocity * throwable.ThrowTime;
             throwable.Throw(targetPosition);
         }
